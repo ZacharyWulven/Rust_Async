@@ -30,8 +30,10 @@ impl Future for TimerFuture {
 
     // 查看 shared state，看下 timer 是否已经结束
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        println!("[{:?}] Polling TimerFuture ...", thread::current().id());
         let mut shared_state = self.shared_state.lock().unwrap();
         if shared_state.completed {
+            println!("[{:?}] TimerFuture completed ...", thread::current().id());
             Poll::Ready(())
         } else {
             /*
@@ -45,6 +47,7 @@ impl Future for TimerFuture {
                 Note：可以使用 `Waker::will_wake` 函数来检查这一点，为了简单这里我们就省略了
              */
             shared_state.waker = Some(cx.waker().clone());
+            println!("[{:?}] TimerFuture pending ...", thread::current().id());
             Poll::Pending            
         }
     }
@@ -64,15 +67,19 @@ impl TimerFuture {
         let thread_shared_state = shared_state.clone();
         thread::spawn(move || {
             // 线程休眠对应的时间
+            println!("start sleep.................");
             thread::sleep(duration);
             let mut shared_state = thread_shared_state.lock().unwrap();
 
             // 休眠时间已到了然后发出信号：计时器已停止并唤醒 Future 被 poll 的最后一个任务（如果存在的话）
             shared_state.completed = true;
             if let Some(waker) = shared_state.waker.take() {
+                println!("end sleep.................");
                 // wake 方法被调用后，相关的任务（或 Future）就可以被唤醒，然后这个 Future 就会被再 poll 一下，
                 // 看是否可以取得更多进展或完成
-                waker.wake()
+                waker.wake();
+                println!("waker wake up.................");
+
             }
         });
 
