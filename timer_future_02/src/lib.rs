@@ -33,7 +33,7 @@ impl Future for TimerFuture {
         println!("[{:?}] Polling TimerFuture ...", thread::current().id());
         let mut shared_state = self.shared_state.lock().unwrap();
         if shared_state.completed {
-            println!("[{:?}] TimerFuture completed ...", thread::current().id());
+            println!("[{:?}] TimerFuture Ready completed ...", thread::current().id());
             Poll::Ready(())
         } else {
             /*
@@ -57,6 +57,8 @@ impl Future for TimerFuture {
 impl TimerFuture {
     // 创建一个新的 TimerFuture，它将在提供的时限过后完成
     pub fn new(duration: Duration) -> Self {
+        println!("[{:?}] 开始创建新的 TimerFuture...", thread::current().id());
+
         let shared_state = Arc::new(Mutex::new(SharedState {
             completed: false,
             waker: None,
@@ -67,21 +69,25 @@ impl TimerFuture {
         let thread_shared_state = shared_state.clone();
         thread::spawn(move || {
             // 线程休眠对应的时间
-            println!("start sleep.................");
+            println!("[{:?}] TimerFuture 生成新的线程并开始休眠...", thread::current().id());
+
             thread::sleep(duration);
             let mut shared_state = thread_shared_state.lock().unwrap();
 
             // 休眠时间已到了然后发出信号：计时器已停止并唤醒 Future 被 poll 的最后一个任务（如果存在的话）
             shared_state.completed = true;
             if let Some(waker) = shared_state.waker.take() {
-                println!("end sleep.................");
+                println!("[{:?}] TimerFuture 新的线程获取 waker，并调用 waker() 方法", thread::current().id());
+
                 // wake 方法被调用后，相关的任务（或 Future）就可以被唤醒，然后这个 Future 就会被再 poll 一下，
                 // 看是否可以取得更多进展或完成
                 waker.wake();
-                println!("waker wake up.................");
+            } else {
+                println!("[{:?}] TimerFuture 新的线程 没获取到 waker", thread::current().id());
 
             }
         });
+        println!("[{:?}] new 函数返回新的 TimerFuture", thread::current().id());
 
         TimerFuture { shared_state }
     }
