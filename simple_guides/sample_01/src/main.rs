@@ -108,13 +108,14 @@ impl Future for ReadFileFuture {
             所以这个方法会被不断地执行
         */
         cx.waker().wake_by_ref();
-        Poll::Pending
+        // Poll::Pending
+        Poll::Ready(String::from("Hello, from file 1!!!"))
     }
 }
 
 async fn read_from_file2() -> String {
     sleep(Duration::new(2, 0));
-    println!("{:?}", "Processing file 2");
+    // println!("{:?}", "Processing file 2");
     String::from("Hi, there from file 2")
 }
 
@@ -125,7 +126,8 @@ async fn main() {
     // 生成异步任务
     let h1 = tokio::spawn(async {
         let future1 = ReadFileFuture {};
-        future1.await;
+        let val = future1.await;
+        println!("{:?}", val);
     });
 
     let h2 = tokio::spawn(async {
